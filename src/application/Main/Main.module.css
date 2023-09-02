@@ -1,5 +1,23 @@
 .main {
-    background: lemonchiffon;
+    background: #fff;
     overflow: auto;
     margin: 20px 0 0 20px;
+    position: relative;
+}
+
+.portal {
+    --clip-path: 0 0, 0 0, 0 0;
+    clip-path: polygon(var(--clip-path));
+    background: rgba(1, 141, 239, 0.14);
+}
+
+.portal > div {
+    pointer-events: none;
+    clip-rule: evenodd;
+    content: "";
+    background: rgba(14, 153, 255, 1);
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    display: block;
 }

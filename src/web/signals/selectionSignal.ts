@@ -4,14 +4,13 @@ import {
     switchMap,
     map,
     takeUntil,
-    throttleTime,
     fromEvent,
-    Observable, defer
+    Observable, defer, shareReplay, startWith, endWith, race, distinctUntilChanged
 } from "rxjs";
 import {curry} from "rambda";
 
-const MOUSE_SELECTION_THROTTLE_TIME = 30;
 const MOUSEMOVE_EVENT = "mousemove";
+const MOUSE_LEAVE = "mouseleave";
 const MOUSEUP_EVENT = "mouseup";
 
 export function startWithTap<T>(callback: () => void) {
@@ -23,7 +22,8 @@ export function startWithTap<T>(callback: () => void) {
 }
 
 const mouseMove$ = fromEvent<MouseEvent>(document, MOUSEMOVE_EVENT);
-export const mouseUp$ = fromEvent(document, MOUSEUP_EVENT);
+export const mouseUp$ = fromEvent(document, MOUSEUP_EVENT, );
+export const mouseLeave$ = fromEvent(document, MOUSE_LEAVE, )
 
 const toDomRect = (startEvent: MouseEvent, moveEvent: MouseEvent) => {
     const width = moveEvent.pageX - startEvent.pageX;
@@ -42,24 +42,18 @@ const toDomRect = (startEvent: MouseEvent, moveEvent: MouseEvent) => {
 
 export const [selectionChange$, setSelection] = createSignal<MouseEvent>();
 
-export const nativeSelection$ = selectionChange$.pipe(
-    switchMap((start) =>
-        mouseMove$.pipe(
-            throttleTime(MOUSE_SELECTION_THROTTLE_TIME),
-            map(curry(toDomRect)(start)),
-            takeUntil(mouseUp$),
-        )
-    )
-)
+export const END_SELECTION = Symbol('begin selection');
+export const START_SELECTION = Symbol('start selection');
 
 export const [useSelection, selection$] = bind(
     selectionChange$.pipe(
-        switchMap((start) =>
-            mouseMove$.pipe(
-                throttleTime(MOUSE_SELECTION_THROTTLE_TIME),
-                map(curry(toDomRect)(start)),
-                takeUntil(mouseUp$),
-            )
-        )
+        switchMap((start) => mouseMove$.pipe(
+            map(curry(toDomRect)(start)),
+            shareReplay({ refCount: true, bufferSize: 1 }),
+            distinctUntilChanged(),
+            takeUntil(race(mouseUp$, mouseLeave$)),
+            startWith(START_SELECTION),
+            endWith(END_SELECTION),
+        )),
     )
 );

@@ -1,17 +1,15 @@
 import styles from './Main.module.css'
 import {Canvas} from "../Canvas/Canvas.tsx";
 import {useEffect, useRef} from "react";
-import {mouseUp$, nativeSelection$, selection$} from "../../web/signals/selectionSignal.ts";
+import {
+    END_SELECTION,
+    mouseUp$,
+    selection$,
+    START_SELECTION
+} from "../../web/signals/selectionSignal.ts";
 import {curry} from "rambda";
 import {createPortal} from "react-dom";
-import {tap} from "rxjs";
-
-const wrapWithPixels = (rect: DOMRect) => ({
-    top: rect.top + 'px',
-    left: rect.left + 'px',
-    width: rect.width + 'px',
-    height: rect.height + 'px'
-})
+import {filter, tap} from "rxjs";
 
 const initMouseSelection: (
     parent: HTMLElement,
@@ -19,7 +17,18 @@ const initMouseSelection: (
     selection: ReturnType<typeof useRef<HTMLElement>>,
     rect: DOMRect,
 ) => void = (_parent, _canvas, selection, rect) => {
-    Object.assign(selection.current!.style, wrapWithPixels(rect))
+    selection.current!.style.clipPath = `polygon(${rect.left}px ${rect.top}px, ${rect.left + rect.width}px ${rect.top}px, ${rect.left + rect.width}px ${rect.top + rect.height}px, ${rect.left}px ${rect.top + rect.height}px)`;
+    selection.current!.querySelector('div')!.style.clipPath = `polygon(evenodd, 
+        ${rect.left}px ${rect.top}px, 
+        ${rect.left + rect.width}px ${rect.top}px, 
+        ${rect.left + rect.width}px ${rect.top + rect.height}px, 
+        ${rect.left}px ${rect.top + rect.height}px, 
+        ${rect.left + 1}px ${rect.top + rect.height - 1}px, 
+        ${rect.left + 1}px ${rect.top + 1}px,  
+        ${rect.left + rect.width - 1}px ${rect.top + 1}px, 
+        ${rect.left + rect.width - 1}px ${rect.top + rect.height - 1}px, 
+        ${rect.left + 1}px ${rect.top + rect.height - 1}px, 
+        ${rect.left}px ${rect.top + rect.height}px)`;
 }
 
 
@@ -29,27 +38,28 @@ type MouseSelectionInit = (
     selection: ReturnType<typeof useRef<HTMLElement | null>>,
 ) => void;
 
+const isMouseEvent = (n: unknown) => n !== END_SELECTION && n !== START_SELECTION;
+
+
+// const showMouseSelectionFrameOnStart = (selectionFrameElem: HTMLElement) => tap(() => showFrame(selectionFrameElem));
+const hideMouseSelectionFrameOnEnd = (selectionFrameElem: HTMLElement) => tap((n) => n === END_SELECTION && hideFrame(selectionFrameElem));
+
+function hideFrame(selectionFrameElem: HTMLElement) {
+    selectionFrameElem.style.clipPath = 'polygon(0% 0%, 0% 0%, 0% 0%, 0% 0%, 0% 0%, 0% 0%, 0% 0%)'
+}
+
+
 const useInitMouseSelection: MouseSelectionInit = (parent, child, selection) => {
 
     useEffect(() => {
-        const s = mouseUp$.subscribe({
-            next: () => {
-                return selection.current!.style.display = 'none';
-            },
-            complete: () => alert(1),
-        });
-        return () => s.unsubscribe();
-    }, [selection]);
-
-    useEffect(() => {
-        return nativeSelection$.pipe(tap(() => {
-            return selection.current!.style.display = 'block';
-        })).subscribe({
-            next: curry(initMouseSelection)(parent, child, selection),
-            complete: () => alert(1),
-        })
+        return selection$.pipe(
+            hideMouseSelectionFrameOnEnd(selection.current!),
+            filter(isMouseEvent),
+        ).subscribe(
+            curry(initMouseSelection)(parent, child, selection),
+        )
             .unsubscribe
-            .bind(nativeSelection$)
+            .bind(selection$)
     }, [parent, child, selection]);
 
 }
@@ -66,10 +76,21 @@ export const Main = () => {
         <Canvas ref={canvasRef}/>
         {createPortal(
             <div
-                className={"portal"}
+                className={styles.portal}
                 ref={selectionRef}
-                style={{pointerEvents: "none", position: "absolute", background: "rgba(0,0, 255, 0.2)"}}
-            ></div>,
+                style={{
+                    pointerEvents: "none",
+                    position: "absolute",
+                    willChange: 'clip-path',
+                    // transition: 'all 10ms ease-in',
+                    width: '100%',
+                    height: '100%',
+                    left: '0',
+                    top: '0',
+                }}
+            >
+                <div></div>
+            </div>,
             document.body,
         )}
     </div>;
