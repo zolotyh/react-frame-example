@@ -3,7 +3,6 @@ import {Canvas} from "../Canvas/Canvas.tsx";
 import {useEffect, useRef} from "react";
 import {
     END_SELECTION,
-    mouseUp$,
     selection$,
     START_SELECTION
 } from "../../web/signals/selectionSignal.ts";
