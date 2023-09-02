@@ -61,5 +61,6 @@ export const [useSelection, selection$] = bind(
             startWith(START_SELECTION),
             endWith(END_SELECTION),
         )),
-    )
+    ),
+    new DOMRect()
 );
