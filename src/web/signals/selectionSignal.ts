@@ -26,6 +26,12 @@ export const mouseUp$ = fromEvent(document, MOUSEUP_EVENT, );
 export const mouseLeave$ = fromEvent(document, MOUSE_LEAVE, )
 
 const toDomRect = (startEvent: MouseEvent, moveEvent: MouseEvent) => {
+    /*
+    1. Есть координаты передвижений относительно документа
+    2. Есть координаты передвижений относительно мейна
+    3. Все координаты должны быть относительно канваса
+ */
+
     const width = moveEvent.pageX - startEvent.pageX;
     const height = moveEvent.pageY - startEvent.pageY;
 
